@@ -298,7 +298,7 @@
                 this.userInput.placeholder = "Speak thy mind, and I shall transcribe...";
             }
 
-                        async sendMessage() {
+            async sendMessage() {
                 if (this.isProcessing) return;
                 const messageText = this.userInput.value.trim();
                 if (!messageText) return;
@@ -338,40 +338,10 @@
                         },
                         body: JSON.stringify({
                             message: messageText,
-                            history: historyForBackend, // This will now start with 'user' or be empty
+                            history: historyForBackend, // This will now start with 'user' or be empty (correct)
                             era: this.currentEra // Send the current era key
                         }),
                     });
-
-                    thinkingMessage.remove(); 
-
-                    if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({ error: "Failed to parse error response from server." }));
-                        console.error("API Error from backend:", errorData);
-                        let displayError = errorData.error || `The Scribe stumbles (Error ${response.status})`;
-                         if (errorData.details && typeof errorData.details === 'string' && errorData.details.includes('Deadline exceeded')) {
-                            displayError = "The Scribe took too long to ponder. Please try a shorter query or try again.";
-                        }
-                        this.addMessage('ai', displayError);
-                        this.updateStatus('error');
-                    } else {
-                        const data = await response.json();
-                        this.addMessage('ai', data.reply);
-                        if (this.statusIndicator.classList.contains('status-thinking')) {
-                           this.updateStatus('ready');
-                        }
-                    }
-                    
-                } catch (error) {
-                    console.error("Client-side Fetch Error:", error);
-                    thinkingMessage.remove();
-                    this.addMessage('ai', 'A raven failed to deliver thy message. Check thy connection or try again.');
-                    this.updateStatus('error');
-                }
-
-                this.isProcessing = false; 
-                this.sendButton.disabled = this.statusIndicator.classList.contains('status-error');
-            }
 
                     thinkingMessage.remove(); 
 
@@ -424,7 +394,7 @@
                     if (role === 'ai') {
                         messageContent.innerHTML = marked.parse(content, { breaks: true, gfm: true });
                     } else {
-                        let processedContent = content.replace(/</g, "<").replace(/>/g, ">");
+                        let processedContent = content.replace(/</g, "<").replace(/>/g, ">"); // Fixed: using < and > for proper HTML rendering
                         messageContent.innerHTML = processedContent.replace(/\n/g, '<br>');
                     }
                 }
@@ -481,7 +451,8 @@
             updateStats() {
                 const uiConfig = this.getPersonaConfig();
                 const messageCount = this.conversation.filter(m => m.role === 'user' || m.role === 'ai').length;
-                const actualTurns = messageCount > 0 && this.conversation[0].content === uiConfig.initialContent && this.conversation[0].role === 'ai'
+                // Exclude the initial static greeting from "turns" count
+                const actualTurns = this.conversation.length > 0 && this.conversation[0].content === uiConfig.initialContent && this.conversation[0].role === 'ai'
                                     ? messageCount -1 
                                     : messageCount;
                 this.conversationStats.textContent = `Turns: ${actualTurns} | Persona: ${uiConfig.name}`;
@@ -511,6 +482,7 @@
             preserveTale() {
                 const uiConfig = this.getPersonaConfig();
                 const conversationToSave = this.conversation.filter((msg, index) => {
+                    // Filter out the initial AI greeting for saving
                     return !(index === 0 && msg.role === 'ai' && msg.content === uiConfig.initialContent);
                 });
 
