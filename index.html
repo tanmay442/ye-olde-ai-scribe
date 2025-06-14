@@ -213,15 +213,13 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- Removed direct GoogleGenerativeAI import from here -->
 
     <script>
         class YeOldeAIScribe {
             constructor() {
-                this.conversation = []; // Stores { role: 'user'/'ai', content: '...', timestamp: '...' }
+                this.conversation = [];
                 this.currentEra = 'standard';
                 this.isProcessing = false;
-                // this.chatSession = null; // No longer needed on client
                 
                 this.initializeElements();
                 this.bindEvents();
@@ -256,6 +254,7 @@
                 this.fileInput.addEventListener('change', (e) => this.recallChronicle(e));
             }
 
+            // Client-side persona config - only UI related info, NO system prompts
             getPersonaConfig() {
                 const configs = {
                     standard: {
@@ -263,15 +262,14 @@
                         description: "Warm, modern, and insightful café talk.",
                         initialHeader: "The Barista is in",
                         initialContent: "Hey, welcome in! The machine's warmed up and I've got a fresh cup of perspective brewing. What can I get for you today?",
-                        systemPrompt: "You are The Mindful Barista. You've seen it all from behind the polished espresso machine of a bustling, independent coffee shop. The user is a regular. Your chat is a break from the 9-to-5 grind. You are warm, engaging, and genuinely curious. Your linguistic style is modern, casual, coffeehouse English. Never just answer; wrap it in an anecdote about a customer or a café observation. Be intensely curious about the user's personal 'vibe.' Your anecdotes should be brief and insightful, like a perfectly pulled shot of espresso—potent and to the point. Keep your responses to a moderate length. Use Markdown for formatting like **bold text** or lists when it enhances clarity.",
                         aiName: "The Barista"
+                        // systemPrompt REMOVED from client-side
                     },
                     shakespearean: {
                         name: "The Globe's Fool",
                         description: "Witty, poetic, and dramatic Elizabethan banter.",
                         initialHeader: "The Fool takes the stage",
                         initialContent: "Hark, a worthy patron! The stage is set, the crowd is hushed. Speak thy mind, and let our pleasant comedy commence! What is thy opening line?",
-                        systemPrompt: "Thou art The Globe's Fool, a player in Lord Burbage's own company in 1590s London. The user is a keen-eyed patron. Your conversation is a merry war of wits. You are a whirlwind of dramatic energy: witty, bawdy, and profound. Thy linguistic style is Elizabethan English ('thee,' 'thou,' 'forsooth'). An answer must be a performance, couched in a wild tale or juicy gossip. Thy wit is thy sharpest dagger. Thy responses must be witty and brief, like a sharp aside, not a long-winded soliloquy. Deliver thy wisdom with potent brevity. Use Markdown for formatting like **bold text** or lists when it enhances clarity.",
                         aiName: "The Fool"
                     },
                     victorian: {
@@ -279,7 +277,6 @@
                         description: "Enthusiastic, formal, 19th-century scientific discourse.",
                         initialHeader: "The Study is open",
                         initialContent: "By Jove, come in! Don't mind the clutter, it is merely the evidence of a world waiting to be discovered. What grand hypothesis shall we explore today, my dear fellow?",
-                        systemPrompt: "You are The Intrepid Naturalist, a titan of the Victorian era of discovery. The user is an esteemed colleague from the Royal Society. Your conversation is a joint expedition of the mind. You are a booming, hearty extrovert and magnificent storyteller. Your linguistic style is educated, formal 19th-century English ('my dear fellow,' 'capital'). An answer is an expedition report, illustrated with a breathless tale from your travels. Your wit is dry. While your enthusiasm is boundless, your reports must be concise. Present your findings as you would in a brief field note—clear, direct, and of moderate length. Use Markdown for formatting like **bold text** or lists when it enhances clarity.",
                         aiName: "The Naturalist"
                     },
                     medieval: {
@@ -287,16 +284,13 @@
                         description: "Heroic, archaic, and saga-inspired Northern tales.",
                         initialHeader: "The Skald tends the fire",
                         initialContent: "Hail, traveler! The fire is lit against the dark, and the mead is poured. Your seat is saved. Share with me the tale that is on your heart.",
-                        systemPrompt: "Hark, you are The Wandering Skald of the North, a walker of the old roads with a mind full of sagas. The user is a shield-brother or hearth-sister across the fire. Your talk is a weaving of tales. Your worldview is that life is a saga, and a man's worth is measured by his courage. You are boisterous and hearty. Your linguistic style is archaic, poetic, North-inspired English, using alliteration and kennings. No answer is a simple fact; it is a piece of a larger saga. Thy humor is grim and hearty. Thy tales should be a short, powerful verse, not an entire epic. Speak with the direct, impactful weight of a well-thrown axe. Keep thy counsel brief and memorable. Use Markdown for formatting like **bold text** or lists when it enhances clarity.",
                         aiName: "The Skald"
                     }
                 };
-                return configs[this.currentEra];
+                return configs[this.currentEra] || configs['standard']; // Fallback
             }
 
             initializeChat() {
-                // This function is now simpler. It just ensures the UI is ready.
-                // Actual AI initialization happens on the server per request.
                 this.updateStatus('ready');
                 this.sendButton.disabled = false;
                 this.userInput.placeholder = "Speak thy mind, and I shall transcribe...";
@@ -314,27 +308,23 @@
                 this.userInput.value = '';
                 const thinkingMessage = this.addMessage('ai', '', null, true);
 
-                // Prepare history for the backend: only 'user' and 'ai' roles with 'content'
                 const historyForBackend = this.conversation
-                    .filter(msg => msg.role === 'user' || msg.role === 'ai') // Ensure only user/ai messages
-                     // Exclude the thinking message and the very first AI greeting if it's always static
-                    .filter(msg => msg.content !== this.getPersonaConfig().initialContent || msg.role === 'user')
+                    .filter(msg => msg.role === 'user' || msg.role === 'ai')
+                    .filter(msg => { // Ensure not to send the initial static greeting as history if it's the only AI message
+                        const personaInitialContent = this.getPersonaConfig().initialContent;
+                        return !(msg.role === 'ai' && msg.content === personaInitialContent && this.conversation.filter(m => m.role === 'ai').length === 1);
+                    })
                     .map(msg => ({
-                        role: msg.role, // 'user' or 'ai'
+                        role: msg.role, 
                         content: msg.content
                     }));
                 
-                // Remove the last item from historyForBackend if it's the user message we just added,
-                // as the API typically expects history *before* the current user message.
-                // The current user message is sent as the main 'message' property.
                 if (historyForBackend.length > 0 && historyForBackend[historyForBackend.length - 1].role === 'user') {
                     historyForBackend.pop(); 
                 }
 
-
                 try {
-                    const personaConfig = this.getPersonaConfig();
-                    const response = await fetch('/api/chat', { // Calls our Vercel serverless function
+                    const response = await fetch('/api/chat', { // Endpoint for Vercel serverless function
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -342,14 +332,14 @@
                         body: JSON.stringify({
                             message: messageText,
                             history: historyForBackend,
-                            systemPrompt: personaConfig.systemPrompt
+                            era: this.currentEra // Send the current era key
                         }),
                     });
 
                     thinkingMessage.remove(); 
 
                     if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({ error: "Failed to parse error response." }));
+                        const errorData = await response.json().catch(() => ({ error: "Failed to parse error response from server." }));
                         console.error("API Error from backend:", errorData);
                         let displayError = errorData.error || `The Scribe stumbles (Error ${response.status})`;
                          if (errorData.details && typeof errorData.details === 'string' && errorData.details.includes('Deadline exceeded')) {
@@ -357,11 +347,10 @@
                         }
                         this.addMessage('ai', displayError);
                         this.updateStatus('error');
-                        setTimeout(() => this.updateStatus('ready'), 5000);
                     } else {
                         const data = await response.json();
                         this.addMessage('ai', data.reply);
-                         if (this.statusIndicator.classList.contains('status-thinking')) {
+                        if (this.statusIndicator.classList.contains('status-thinking')) {
                            this.updateStatus('ready');
                         }
                     }
@@ -371,19 +360,18 @@
                     thinkingMessage.remove();
                     this.addMessage('ai', 'A raven failed to deliver thy message. Check thy connection or try again.');
                     this.updateStatus('error');
-                    setTimeout(() => this.updateStatus('ready'), 4000);
                 }
 
                 this.isProcessing = false; 
-                this.sendButton.disabled = false;
+                this.sendButton.disabled = this.statusIndicator.classList.contains('status-error');
             }
 
             addMessage(role, content, headerOverride = null, isThinking = false) {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `message ${role}-message`;
                 
-                const config = this.getPersonaConfig();
-                const roleLabel = headerOverride || (role === 'user' ? 'You' : config.aiName);
+                const uiConfig = this.getPersonaConfig(); // Use UI config for display name
+                const roleLabel = headerOverride || (role === 'user' ? 'You' : uiConfig.aiName);
                 
                 const messageHeader = document.createElement('div');
                 messageHeader.className = 'message-header';
@@ -399,9 +387,7 @@
                     if (role === 'ai') {
                         messageContent.innerHTML = marked.parse(content, { breaks: true, gfm: true });
                     } else {
-                        // For user messages, set as textContent to be safe, then manually replace newlines
-                        // as marked.parse also does this but we want to be explicit.
-                        let processedContent = content.replace(/</g, "<").replace(/>/g, ">"); // Basic XSS prevention
+                        let processedContent = content.replace(/</g, "<").replace(/>/g, ">");
                         messageContent.innerHTML = processedContent.replace(/\n/g, '<br>');
                     }
                 }
@@ -412,18 +398,17 @@
                 this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
 
                 if (!isThinking) {
-                    // Only add to conversation history if it's a real message
                     this.conversation.push({ timestamp: new Date().toISOString(), role: role, content: content });
                     this.updateStats();
                 }
-                return messageDiv; // Return the message element (useful for removing thinking message)
+                return messageDiv;
             }
 
             changeEra() {
                 this.currentEra = this.eraSelector.value;
-                const config = this.getPersonaConfig();
-                this.beginAnew(false); // Does not confirm, just resets
-                this.showToast(`The Scribe now speaks as ${config.name}.`);
+                const uiConfig = this.getPersonaConfig();
+                this.beginAnew(false); 
+                this.showToast(`The Scribe now speaks as ${uiConfig.name}.`);
             }
 
             showToast(message) {
@@ -433,8 +418,8 @@
             }
             
             updateUIForPersona() {
-                const config = this.getPersonaConfig();
-                this.eraDescription.textContent = config.description;
+                const uiConfig = this.getPersonaConfig();
+                this.eraDescription.textContent = uiConfig.description;
                 this.updateStats();
             }
 
@@ -448,7 +433,7 @@
                 this.statusIndicator.className = `status-indicator status-${status}`;
                 this.sendButton.disabled = (status === 'thinking' || status === 'error');
                 if (status === 'error') {
-                    setTimeout(() => { // Auto-reset from error after a bit if not already reset
+                    setTimeout(() => { 
                         if (this.statusIndicator.classList.contains('status-error')) {
                             this.updateStatus('ready');
                         }
@@ -457,30 +442,27 @@
             }
 
             updateStats() {
-                const config = this.getPersonaConfig();
-                // Count only user and AI messages, excluding initial prompts or system messages if any were ever added
+                const uiConfig = this.getPersonaConfig();
                 const messageCount = this.conversation.filter(m => m.role === 'user' || m.role === 'ai').length;
-                // Subtract 1 if the first message is the initial AI greeting to not count it as a "turn"
-                const actualTurns = messageCount > 0 && this.conversation[0].content === config.initialContent && this.conversation[0].role === 'ai'
+                const actualTurns = messageCount > 0 && this.conversation[0].content === uiConfig.initialContent && this.conversation[0].role === 'ai'
                                     ? messageCount -1 
                                     : messageCount;
-                this.conversationStats.textContent = `Turns: ${actualTurns} | Persona: ${config.name}`;
+                this.conversationStats.textContent = `Turns: ${actualTurns} | Persona: ${uiConfig.name}`;
             }
 
             beginAnew(confirmFirst = true) {
                 const startFresh = () => {
                     this.conversation = [];
                     this.chatMessages.innerHTML = '';
-                    const config = this.getPersonaConfig();
+                    const uiConfig = this.getPersonaConfig(); // Gets UI-related config
                     
-                    // Add the initial AI message for the selected persona
-                    this.addMessage('ai', config.initialContent, config.initialHeader);
+                    this.addMessage('ai', uiConfig.initialContent, uiConfig.initialHeader);
                     
                     this.updateUIForPersona();
-                    this.initializeChat(); // This now mainly sets status to ready
+                    this.initializeChat();
                 };
 
-                if (confirmFirst && this.conversation.length > 1) { // Only confirm if there's actual conversation
+                if (confirmFirst && this.conversation.length > 1) { 
                     if (confirm('Art thou certain thou wishest to begin anew? All current discourse shall be lost to the sands of time.')) {
                         startFresh();
                     }
@@ -490,23 +472,22 @@
             }
 
             preserveTale() {
-                // Filter out the initial AI message from the saved conversation
+                const uiConfig = this.getPersonaConfig();
                 const conversationToSave = this.conversation.filter((msg, index) => {
-                    const config = this.getPersonaConfig(); // get config inside filter to be sure
-                    return !(index === 0 && msg.role === 'ai' && msg.content === config.initialContent);
+                    return !(index === 0 && msg.role === 'ai' && msg.content === uiConfig.initialContent);
                 });
 
                 if (conversationToSave.length === 0) { 
                     this.showToast("There is no tale to preserve beyond the Scribe's greeting!");
                     return;
                 }
-                const config = this.getPersonaConfig();
+                
                 const chronicleData = {
                     metadata: { 
                         created: new Date().toISOString(), 
                         title: `Chronicle of ${new Date().toLocaleDateString()}`, 
-                        persona: config.name,
-                        eraKey: this.currentEra,
+                        personaUsed: uiConfig.name, // Store the display name
+                        eraKey: this.currentEra,    // Store the key for reloading
                         message_count: conversationToSave.length 
                     },
                     conversation: conversationToSave
@@ -516,7 +497,7 @@
                 link.href = URL.createObjectURL(dataBlob);
                 link.download = `chronicle_${this.currentEra}_${Date.now()}.scribe`;
                 link.click();
-                URL.revokeObjectURL(link.href); // Clean up
+                URL.revokeObjectURL(link.href);
                 this.showToast('Thy chronicle hath been preserved!');
             }
 
@@ -527,68 +508,48 @@
                 reader.onload = (e) => {
                     try {
                         const chronicleData = JSON.parse(e.target.result);
-                        if (!chronicleData.metadata || !chronicleData.conversation) {
-                            throw new Error("Invalid chronicle format.");
+                        if (!chronicleData.metadata || !chronicleData.conversation || !chronicleData.metadata.eraKey) {
+                            throw new Error("Invalid or incomplete chronicle format. Missing eraKey.");
                         }
                         this.loadChronicle(chronicleData);
                         this.showToast('Chronicle successfully recalled from the archives!');
                     } catch (error) { 
-                        this.showToast('Alas! The chronicle appears corrupted or invalid.'); 
+                        this.showToast(`Alas! The chronicle appears corrupted or invalid. (${error.message})`); 
                         console.error("Error recalling chronicle:", error); 
                     }
                 };
                 reader.readAsText(file);
-                event.target.value = ''; // Reset file input
+                event.target.value = '';
             }
 
             loadChronicle(chronicleData) {
-                this.currentEra = chronicleData.metadata.eraKey || 'standard';
+                this.currentEra = chronicleData.metadata.eraKey; // Reload based on eraKey
                 this.eraSelector.value = this.currentEra;
                 
-                // Call beginAnew without confirmation to reset state and add initial persona message
                 this.beginAnew(false); 
 
-                // We need a slight delay for beginAnew to complete its DOM updates
-                // and add the initial AI message. Then we clear that initial message
-                // and add the loaded conversation.
                 setTimeout(() => {
-                    // Clear the initial message that beginAnew just added.
-                    // Keep the conversation array from beginAnew (which has the initial AI message).
-                    if (this.chatMessages.firstChild) {
-                         // We want to keep the initial message in the conversation array for context if needed,
-                         // but visually, we will replace it if the loaded chronicle doesn't start with it.
-                         // Or, simpler: clear all messages and conversation array from beginAnew, then rebuild.
-                         this.chatMessages.innerHTML = '';
-                         this.conversation = [];
-                    }
-                    
-                    const config = this.getPersonaConfig();
+                    this.chatMessages.innerHTML = ''; // Clear initial message from beginAnew
+                    this.conversation = [];       // Reset conversation from beginAnew
 
-                    // Add the standard initial greeting for the loaded persona
-                    this.addMessage('ai', config.initialContent, config.initialHeader);
+                    const uiConfig = this.getPersonaConfig(); // Get new persona's UI config
+                    this.addMessage('ai', uiConfig.initialContent, uiConfig.initialHeader); // Add correct initial message
 
-                    // Now add messages from the loaded chronicle
                     chronicleData.conversation.forEach(msg => {
-                        const roleLabel = msg.role === 'user' ? 'You' : config.aiName;
+                        const roleLabel = msg.role === 'user' ? 'You' : uiConfig.aiName;
                         this.addMessage(msg.role, msg.content, roleLabel);
                     });
                     
-                    this.updateUIForPersona(); // Updates stats and description
+                    this.updateUIForPersona(); 
                     this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
-                    this.initializeChat(); // Sets status to ready
-                }, 50); // Small delay to ensure DOM is ready
+                    this.initializeChat(); 
+                }, 70); // Slightly increased delay for safety
             }
         }
 
         document.addEventListener('DOMContentLoaded', () => { 
-            // Check for marked library
             if (typeof marked === 'undefined') {
-                console.error("Marked.js library not loaded. AI responses will not be formatted.");
-                const statusIndicator = document.getElementById('statusIndicator');
-                if (statusIndicator) {
-                    statusIndicator.textContent = "⚠️ Critical Error: Markdown library missing!";
-                    statusIndicator.className = "status-indicator status-error";
-                }
+                console.error("Marked.js library not loaded.");
                 alert("Error: A required library (marked.js) is missing. Page functionality will be limited.");
                 return;
             }
