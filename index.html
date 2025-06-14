@@ -298,7 +298,7 @@
                 this.userInput.placeholder = "Speak thy mind, and I shall transcribe...";
             }
 
-            async sendMessage() {
+                        async sendMessage() {
                 if (this.isProcessing) return;
                 const messageText = this.userInput.value.trim();
                 if (!messageText) return;
@@ -310,17 +310,22 @@
                 this.userInput.value = '';
                 const thinkingMessage = this.addMessage('ai', '', null, true);
 
+                const personaInitialContent = this.getPersonaConfig().initialContent; // Get initial content once
+
+                // Construct history for backend, always excluding the initial static AI greeting
                 const historyForBackend = this.conversation
-                    .filter(msg => msg.role === 'user' || msg.role === 'ai')
-                    .filter(msg => { // Ensure not to send the initial static greeting as history if it's the only AI message
-                        const personaInitialContent = this.getPersonaConfig().initialContent;
-                        return !(msg.role === 'ai' && msg.content === personaInitialContent && this.conversation.filter(m => m.role === 'ai').length === 1);
+                    .filter(msg => msg.role === 'user' || msg.role === 'ai') // Only conversational roles
+                    .filter(msg => {
+                        // Always exclude the initial AI greeting from the history sent to the backend
+                        return !(msg.role === 'ai' && msg.content === personaInitialContent);
                     })
                     .map(msg => ({
                         role: msg.role, 
                         content: msg.content
                     }));
                 
+                // This part correctly removes the *current* user message from the history array,
+                // as it will be sent as the separate 'message' parameter.
                 if (historyForBackend.length > 0 && historyForBackend[historyForBackend.length - 1].role === 'user') {
                     historyForBackend.pop(); 
                 }
@@ -333,10 +338,40 @@
                         },
                         body: JSON.stringify({
                             message: messageText,
-                            history: historyForBackend,
+                            history: historyForBackend, // This will now start with 'user' or be empty
                             era: this.currentEra // Send the current era key
                         }),
                     });
+
+                    thinkingMessage.remove(); 
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({ error: "Failed to parse error response from server." }));
+                        console.error("API Error from backend:", errorData);
+                        let displayError = errorData.error || `The Scribe stumbles (Error ${response.status})`;
+                         if (errorData.details && typeof errorData.details === 'string' && errorData.details.includes('Deadline exceeded')) {
+                            displayError = "The Scribe took too long to ponder. Please try a shorter query or try again.";
+                        }
+                        this.addMessage('ai', displayError);
+                        this.updateStatus('error');
+                    } else {
+                        const data = await response.json();
+                        this.addMessage('ai', data.reply);
+                        if (this.statusIndicator.classList.contains('status-thinking')) {
+                           this.updateStatus('ready');
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.error("Client-side Fetch Error:", error);
+                    thinkingMessage.remove();
+                    this.addMessage('ai', 'A raven failed to deliver thy message. Check thy connection or try again.');
+                    this.updateStatus('error');
+                }
+
+                this.isProcessing = false; 
+                this.sendButton.disabled = this.statusIndicator.classList.contains('status-error');
+            }
 
                     thinkingMessage.remove(); 
 
