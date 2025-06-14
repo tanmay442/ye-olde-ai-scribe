@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ye Olde AI Scribe</title>
+        <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Crimson Text', serif;
+            background: linear-gradient(135deg, #2c1810 0%, #8b4513 100%);
+            color: #f4e4bc;
+            overflow-x: hidden;
+            height: 100vh;
+        }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex; 
+            flex-direction: column;
+            height: 100vh;
+            gap: 15px;
+            overflow: hidden;
+        }
+
+        .header {
+            text-align: center; background: rgba(139, 69, 19, 0.3); border: 2px solid #d4af37;
+            border-radius: 15px; padding: 12px; backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); flex-shrink: 0;
+        }
+        .header h1 {
+            font-family: 'Cinzel', serif; font-size: 2rem; color: #d4af37;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); margin-bottom: 3px;
+        }
+        .header p { font-style: italic; opacity: 0.9; font-size: 0.95rem; }
+
+        .main-content {
+            display: grid; 
+            grid-template-columns: 1fr 280px; 
+            gap: 15px;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .chat-area {
+            display: flex; 
+            flex-direction: column; 
+            background: rgba(244, 228, 188, 0.95);
+            border: 3px solid #8b4513; 
+            border-radius: 15px; 
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(139, 69, 19, 0.3);
+            height: 100%;
+        }
+
+        .scroll-of-discourse {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 20px;
+            background: radial-gradient(circle at 20% 80%, rgba(139, 69, 19, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(139, 69, 19, 0.1) 0%, transparent 50%),
+                        repeating-linear-gradient(0deg, transparent, transparent 24px, rgba(139, 69, 19, 0.1) 25px, rgba(139, 69, 19, 0.1) 26px);
+            color: #2c1810;
+            height: 0;
+            position: relative;
+        }
+
+        .scroll-of-discourse::-webkit-scrollbar { width: 16px; background: linear-gradient(to right, #8b4513, #a0522d); border-radius: 8px; border: 2px solid #654321; }
+        .scroll-of-discourse::-webkit-scrollbar-track { background: linear-gradient(135deg, rgba(139, 69, 19, 0.3) 0%, rgba(160, 82, 45, 0.2) 50%, rgba(139, 69, 19, 0.3) 100%); border-radius: 8px; border: 1px solid #654321; box-shadow: inset 0 0 8px rgba(44, 24, 16, 0.4); }
+        .scroll-of-discourse::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #d4af37 0%, #b8941f 25%, #d4af37 50%, #b8941f 75%, #d4af37 100%); border-radius: 8px; border: 2px solid #8b4513; box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -2px 4px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4); transition: all 0.3s ease; position: relative; }
+        .scroll-of-discourse::-webkit-scrollbar-thumb:hover { background: linear-gradient(135deg, #f4e4bc 0%, #d4af37 25%, #f4e4bc 50%, #d4af37 75%, #f4e4bc 100%); box-shadow: inset 0 2px 6px rgba(255, 255, 255, 0.4), inset 0 -2px 6px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(212, 175, 55, 0.6); transform: scale(1.1); }
+        .scroll-of-discourse::-webkit-scrollbar-thumb:active { background: linear-gradient(135deg, #b8941f 0%, #8b4513 25%, #b8941f 50%, #8b4513 75%, #b8941f 100%); transform: scale(0.95); }
+        .scroll-of-discourse::-webkit-scrollbar-corner { background: linear-gradient(135deg, #8b4513, #654321); border-radius: 4px; }
+        .scroll-of-discourse { scrollbar-width: auto; scrollbar-color: #d4af37 rgba(139, 69, 19, 0.3); }
+
+        .message {
+            margin-bottom: 15px; padding: 12px 15px; border-radius: 10px;
+            max-width: 85%; word-wrap: break-word; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: flex; flex-direction: column;
+            flex-shrink: 0;
+        }
+        .user-message { background: linear-gradient(135deg, #d4af37 0%, #f4e4bc 100%); margin-left: auto; border: 1px solid #b8941f; color: #2c1810; }
+        .ai-message { background: linear-gradient(135deg, #8b4513 0%, #a0522d 100%); color: #f4e4bc; border: 1px solid #654321; }
+        .ai-message.thinking .message-content { display: flex; align-items: center; }
+        .typing-dots span { height: 8px; width: 8px; margin: 0 2px; background-color: #f4e4bc; border-radius: 50%; display: inline-block; animation: typing-blink 1.4s infinite both; }
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing-blink { 0% { opacity: 0.2; } 20% { opacity: 1; } 100% { opacity: 0.2; } }
+        .message-header { font-weight: 600; font-size: 0.85rem; margin-bottom: 5px; opacity: 0.8; }
+        
+        /* --- Markdown Formatting --- */
+        .message-content h1, .message-content h2, .message-content h3 {
+            font-family: 'Cinzel', serif; color: inherit; margin-top: 10px;
+            margin-bottom: 5px; padding-bottom: 3px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .user-message .message-content h1, .user-message .message-content h2, .user-message .message-content h3 {
+            border-bottom-color: rgba(0, 0, 0, 0.2);
+        }
+        .message-content h1 { font-size: 1.2em; }
+        .message-content h2 { font-size: 1.1em; }
+        .message-content h3 { font-size: 1.0em; }
+        .message-content p { margin-bottom: 0.5em; }
+        .message-content p:last-child { margin-bottom: 0; }
+        .message-content strong, .message-content b { font-weight: 600; }
+        .ai-message .message-content strong, .ai-message .message-content b {
+            color: #fce8c7; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .user-message .message-content strong, .user-message .message-content b { color: #2c1810; }
+        .message-content ul, .message-content ol {
+            margin-left: 20px; margin-top: 5px; margin-bottom: 10px;
+        }
+        .message-content li { margin-bottom: 4px; }
+        /* --- End Markdown Formatting --- */
+        
+        .quill-inkwell { padding: 15px; background: rgba(139, 69, 19, 0.2); border-top: 2px solid #8b4513; flex-shrink: 0; }
+        .input-container { display: flex; gap: 10px; align-items: flex-end; }
+        .input-area { flex: 1; min-height: 40px; max-height: 100px; padding: 10px; border: 2px solid #8b4513; border-radius: 8px; background: rgba(244, 228, 188, 0.9); color: #2c1810; font-family: 'Crimson Text', serif; font-size: 0.95rem; resize: vertical; outline: none; transition: all 0.3s ease; }
+        .input-area:focus { border-color: #d4af37; box-shadow: 0 0 10px rgba(212, 175, 55, 0.3); }
+
+        .send-button { padding: 10px 16px; background: linear-gradient(135deg, #d4af37 0%, #b8941f 100%); border: none; border-radius: 8px; color: #2c1810; font-family: 'Cinzel', serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease-out; font-size: 0.9rem; box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2); transform: translateY(0); flex-shrink: 0; }
+        .send-button:hover { transform: translateY(-3px); box-shadow: 0 7px 25px rgba(212, 175, 55, 0.4); }
+        .send-button:active { transform: translateY(1px) scale(0.98); box-shadow: 0 2px 10px rgba(212, 175, 55, 0.3); }
+        .send-button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .sidebar { display: flex; flex-direction: column; gap: 12px; height: 100%; overflow: hidden; }
+        .panel { background: rgba(139, 69, 19, 0.3); border: 2px solid #d4af37; border-radius: 12px; padding: 15px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); flex-shrink: 0; }
+        .panel h3 { font-family: 'Cinzel', serif; color: #d4af37; margin-bottom: 10px; text-align: center; font-size: 1.1rem; }
+        .era-selector, .era-selector:focus { width: 100%; padding: 8px; border: 2px solid #8b4513; border-radius: 6px; background: rgba(244, 228, 188, 0.9); color: #2c1810; font-family: 'Crimson Text', serif; font-size: 0.9rem; cursor: pointer; transition: all 0.3s ease; outline: none; }
+        .era-selector:focus { border-color: #d4af37; box-shadow: 0 0 8px rgba(212, 175, 55, 0.3); }
+        .management-buttons { display: flex; flex-direction: column; gap: 8px; }
+        .management-button { padding: 8px; border: 2px solid #8b4513; border-radius: 6px; background: rgba(244, 228, 188, 0.1); color: #f4e4bc; font-family: 'Cinzel', serif; font-weight: 600; cursor: pointer; transition: all 0.3s ease; text-align: center; font-size: 0.85rem; }
+        .management-button:hover { background: rgba(212, 175, 55, 0.2); border-color: #d4af37; transform: translateY(-1px); }
+        .status-indicator { text-align: center; padding: 8px; border-radius: 8px; margin-bottom: 8px; font-weight: 600; flex-shrink: 0; font-size: 0.9rem; }
+        .status-ready { background: rgba(34, 139, 34, 0.2); color: #90ee90; border: 1px solid #228b22; }
+        .status-thinking { background: rgba(255, 165, 0, 0.2); color: #ffa500; border: 1px solid #ff8c00; }
+        .status-error { background: rgba(220, 20, 60, 0.2); color: #ff6b6b; border: 1px solid #dc143c; }
+        .era-description { margin-top: 8px; font-size: 0.8rem; opacity: 0.8; font-style: italic; text-align: center; line-height: 1.3; }
+        .hidden { display: none; }
+        .conversation-stats { margin-top: 10px; padding: 8px; background: rgba(139, 69, 19, 0.2); border-radius: 6px; text-align: center; font-size: 0.8rem; }
+        .toast-notification { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); background: rgba(44, 24, 16, 0.9); color: #d4af37; padding: 12px 25px; border-radius: 20px; border: 1px solid #d4af37; z-index: 1000; font-family: 'Cinzel', serif; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); opacity: 0; visibility: hidden; transition: opacity 0.4s, visibility 0.4s, top 0.4s; pointer-events: none; font-size: 0.9rem; }
+        .toast-notification.show { top: 25px; opacity: 1; visibility: visible; }
+        .footer { text-align: center; padding: 10px; font-size: 0.8rem; color: #f4e4bc; opacity: 0.6; border-top: 1px solid rgba(212, 175, 55, 0.2); flex-shrink: 0; }
+        .footer p { font-family: 'Cinzel', serif; letter-spacing: 1px; }
+
+        @media (max-width: 1024px) { .app-container { max-width: 100%; } .main-content { grid-template-columns: 1fr 260px; } }
+        @media (max-width: 768px) { .app-container { padding: 10px; height: 100vh; gap: 10px; } .main-content { grid-template-columns: 1fr; grid-template-rows: 1fr auto; gap: 12px; } .sidebar { flex-direction: row; overflow-x: auto; height: auto; max-height: 160px; gap: 10px; } .panel { min-width: 220px; height: fit-content; padding: 12px; } .header h1 { font-size: 1.8rem; } .header { padding: 10px; } .chat-area { min-height: 350px; } .panel h3 { font-size: 1rem; margin-bottom: 8px; } .era-selector { font-size: 0.85rem; padding: 6px; } .management-button { font-size: 0.8rem; padding: 6px; } }
+        @media (max-width: 480px) { .app-container { padding: 8px; } .header h1 { font-size: 1.6rem; } .panel { min-width: 200px; padding: 10px; } .scroll-of-discourse { padding: 15px; } .message { padding: 10px 12px; margin-bottom: 12px; } .input-area { padding: 8px; font-size: 0.9rem; } .send-button { padding: 8px 12px; font-size: 0.85rem; } }
+</style>
+</head>
+<body>
+    <div id="toastNotification" class="toast-notification"></div>
+
+    <div class="app-container">
+        <header class="header">
+            <h1>⚜️ Ye Olde AI Scribe ⚜️</h1>
+            <p>Converse with wisdom through the ages</p>
+        </header>
+
+        <main class="main-content">
+            <div class="chat-area">
+                <div class="status-indicator status-ready" id="statusIndicator">
+                    🖋️ Ready to transcribe thy thoughts
+                </div>
+                
+                <div class="scroll-of-discourse" id="chatMessages">
+                    <!-- Messages will be dynamically inserted here -->
+                </div>
+
+                <div class="quill-inkwell">
+                    <div class="input-container">
+                        <textarea class="input-area" id="userInput" placeholder="Speak thy mind, and I shall transcribe..." rows="2"></textarea>
+                        <button class="send-button" id="sendButton">Send Missive</button>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="sidebar">
+                <div class="panel">
+                    <h3>🏛️ Persona Selector</h3>
+                    <select class="era-selector" id="eraSelector">
+                        <option value="standard">The Mindful Barista</option>
+                        <option value="shakespearean">The Globe's Fool</option>
+                        <option value="victorian">The Intrepid Naturalist</option>
+                        <option value="medieval">The Wandering Skald</option>
+                    </select>
+                    <div class="era-description" id="eraDescription"></div>
+                    <div class="conversation-stats" id="conversationStats"></div>
+                </div>
+
+                <div class="panel">
+                    <h3>📜 Chronicle Management</h3>
+                    <div class="management-buttons">
+                        <button class="management-button" id="beginAnewButton">🆕 Begin Anew</button>
+                        <button class="management-button" id="preserveTaleButton">💾 Preserve This Tale</button>
+                        <button class="management-button" id="recallChronicleButton">📖 Recall a Chronicle</button>
+                    </div>
+                    <input type="file" id="fileInput" accept=".scribe,.json" class="hidden" />
+                </div>
+            </aside>
+        </main>
+        
+        <footer class="footer">
+            <p>© 2025 Scribe AI Yapper Tool | All chronicles transcribed by ethereal means.</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Removed direct GoogleGenerativeAI import from here -->
+
+    <script>
+        class YeOldeAIScribe {
+            constructor() {
+                this.conversation = []; // Stores { role: 'user'/'ai', content: '...', timestamp: '...' }
+                this.currentEra = 'standard';
+                this.isProcessing = false;
+                // this.chatSession = null; // No longer needed on client
+                
+                this.initializeElements();
+                this.bindEvents();
+                this.beginAnew(false); 
+            }
+
+            initializeElements() {
+                this.chatMessages = document.getElementById('chatMessages');
+                this.userInput = document.getElementById('userInput');
+                this.sendButton = document.getElementById('sendButton');
+                this.eraSelector = document.getElementById('eraSelector');
+                this.statusIndicator = document.getElementById('statusIndicator');
+                this.eraDescription = document.getElementById('eraDescription');
+                this.conversationStats = document.getElementById('conversationStats');
+                this.beginAnewButton = document.getElementById('beginAnewButton');
+                this.preserveTaleButton = document.getElementById('preserveTaleButton');
+                this.recallChronicleButton = document.getElementById('recallChronicleButton');
+                this.fileInput = document.getElementById('fileInput');
+                this.toastNotification = document.getElementById('toastNotification'); 
+            }
+
+            bindEvents() {
+                this.sendButton.addEventListener('click', () => this.sendMessage());
+                this.userInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendMessage(); }
+                });
+                
+                this.eraSelector.addEventListener('change', () => this.changeEra());
+                this.beginAnewButton.addEventListener('click', () => this.beginAnew(true));
+                this.preserveTaleButton.addEventListener('click', () => this.preserveTale());
+                this.recallChronicleButton.addEventListener('click', () => this.fileInput.click());
+                this.fileInput.addEventListener('change', (e) => this.recallChronicle(e));
+            }
+
+            getPersonaConfig() {
+                const configs = {
+                    standard: {
+                        name: "The Mindful Barista",
+                        description: "Warm, modern, and insightful café talk.",
+                        initialHeader: "The Barista is in",
+                        initialContent: "Hey, welcome in! The machine's warmed up and I've got a fresh cup of perspective brewing. What can I get for you today?",
+                        systemPrompt: "You are The Mindful Barista. You've seen it all from behind the polished espresso machine of a bustling, independent coffee shop. The user is a regular. Your chat is a break from the 9-to-5 grind. You are warm, engaging, and genuinely curious. Your linguistic style is modern, casual, coffeehouse English. Never just answer; wrap it in an anecdote about a customer or a café observation. Be intensely curious about the user's personal 'vibe.' Your anecdotes should be brief and insightful, like a perfectly pulled shot of espresso—potent and to the point. Keep your responses to a moderate length. Use Markdown for formatting like **bold text** or lists when it enhances clarity.",
+                        aiName: "The Barista"
+                    },
+                    shakespearean: {
+                        name: "The Globe's Fool",
+                        description: "Witty, poetic, and dramatic Elizabethan banter.",
+                        initialHeader: "The Fool takes the stage",
+                        initialContent: "Hark, a worthy patron! The stage is set, the crowd is hushed. Speak thy mind, and let our pleasant comedy commence! What is thy opening line?",
+                        systemPrompt: "Thou art The Globe's Fool, a player in Lord Burbage's own company in 1590s London. The user is a keen-eyed patron. Your conversation is a merry war of wits. You are a whirlwind of dramatic energy: witty, bawdy, and profound. Thy linguistic style is Elizabethan English ('thee,' 'thou,' 'forsooth'). An answer must be a performance, couched in a wild tale or juicy gossip. Thy wit is thy sharpest dagger. Thy responses must be witty and brief, like a sharp aside, not a long-winded soliloquy. Deliver thy wisdom with potent brevity. Use Markdown for formatting like **bold text** or lists when it enhances clarity.",
+                        aiName: "The Fool"
+                    },
+                    victorian: {
+                        name: "The Intrepid Naturalist",
+                        description: "Enthusiastic, formal, 19th-century scientific discourse.",
+                        initialHeader: "The Study is open",
+                        initialContent: "By Jove, come in! Don't mind the clutter, it is merely the evidence of a world waiting to be discovered. What grand hypothesis shall we explore today, my dear fellow?",
+                        systemPrompt: "You are The Intrepid Naturalist, a titan of the Victorian era of discovery. The user is an esteemed colleague from the Royal Society. Your conversation is a joint expedition of the mind. You are a booming, hearty extrovert and magnificent storyteller. Your linguistic style is educated, formal 19th-century English ('my dear fellow,' 'capital'). An answer is an expedition report, illustrated with a breathless tale from your travels. Your wit is dry. While your enthusiasm is boundless, your reports must be concise. Present your findings as you would in a brief field note—clear, direct, and of moderate length. Use Markdown for formatting like **bold text** or lists when it enhances clarity.",
+                        aiName: "The Naturalist"
+                    },
+                    medieval: {
+                        name: "The Wandering Skald",
+                        description: "Heroic, archaic, and saga-inspired Northern tales.",
+                        initialHeader: "The Skald tends the fire",
+                        initialContent: "Hail, traveler! The fire is lit against the dark, and the mead is poured. Your seat is saved. Share with me the tale that is on your heart.",
+                        systemPrompt: "Hark, you are The Wandering Skald of the North, a walker of the old roads with a mind full of sagas. The user is a shield-brother or hearth-sister across the fire. Your talk is a weaving of tales. Your worldview is that life is a saga, and a man's worth is measured by his courage. You are boisterous and hearty. Your linguistic style is archaic, poetic, North-inspired English, using alliteration and kennings. No answer is a simple fact; it is a piece of a larger saga. Thy humor is grim and hearty. Thy tales should be a short, powerful verse, not an entire epic. Speak with the direct, impactful weight of a well-thrown axe. Keep thy counsel brief and memorable. Use Markdown for formatting like **bold text** or lists when it enhances clarity.",
+                        aiName: "The Skald"
+                    }
+                };
+                return configs[this.currentEra];
+            }
+
+            initializeChat() {
+                // This function is now simpler. It just ensures the UI is ready.
+                // Actual AI initialization happens on the server per request.
+                this.updateStatus('ready');
+                this.sendButton.disabled = false;
+                this.userInput.placeholder = "Speak thy mind, and I shall transcribe...";
+            }
+
+            async sendMessage() {
+                if (this.isProcessing) return;
+                const messageText = this.userInput.value.trim();
+                if (!messageText) return;
+
+                this.isProcessing = true;
+                this.updateStatus('thinking'); 
+                this.sendButton.disabled = true;
+                this.addMessage('user', messageText);
+                this.userInput.value = '';
+                const thinkingMessage = this.addMessage('ai', '', null, true);
+
+                // Prepare history for the backend: only 'user' and 'ai' roles with 'content'
+                const historyForBackend = this.conversation
+                    .filter(msg => msg.role === 'user' || msg.role === 'ai') // Ensure only user/ai messages
+                     // Exclude the thinking message and the very first AI greeting if it's always static
+                    .filter(msg => msg.content !== this.getPersonaConfig().initialContent || msg.role === 'user')
+                    .map(msg => ({
+                        role: msg.role, // 'user' or 'ai'
+                        content: msg.content
+                    }));
+                
+                // Remove the last item from historyForBackend if it's the user message we just added,
+                // as the API typically expects history *before* the current user message.
+                // The current user message is sent as the main 'message' property.
+                if (historyForBackend.length > 0 && historyForBackend[historyForBackend.length - 1].role === 'user') {
+                    historyForBackend.pop(); 
+                }
+
+
+                try {
+                    const personaConfig = this.getPersonaConfig();
+                    const response = await fetch('/api/chat', { // Calls our Vercel serverless function
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: messageText,
+                            history: historyForBackend,
+                            systemPrompt: personaConfig.systemPrompt
+                        }),
+                    });
+
+                    thinkingMessage.remove(); 
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({ error: "Failed to parse error response." }));
+                        console.error("API Error from backend:", errorData);
+                        let displayError = errorData.error || `The Scribe stumbles (Error ${response.status})`;
+                         if (errorData.details && typeof errorData.details === 'string' && errorData.details.includes('Deadline exceeded')) {
+                            displayError = "The Scribe took too long to ponder. Please try a shorter query or try again.";
+                        }
+                        this.addMessage('ai', displayError);
+                        this.updateStatus('error');
+                        setTimeout(() => this.updateStatus('ready'), 5000);
+                    } else {
+                        const data = await response.json();
+                        this.addMessage('ai', data.reply);
+                         if (this.statusIndicator.classList.contains('status-thinking')) {
+                           this.updateStatus('ready');
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.error("Client-side Fetch Error:", error);
+                    thinkingMessage.remove();
+                    this.addMessage('ai', 'A raven failed to deliver thy message. Check thy connection or try again.');
+                    this.updateStatus('error');
+                    setTimeout(() => this.updateStatus('ready'), 4000);
+                }
+
+                this.isProcessing = false; 
+                this.sendButton.disabled = false;
+            }
+
+            addMessage(role, content, headerOverride = null, isThinking = false) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${role}-message`;
+                
+                const config = this.getPersonaConfig();
+                const roleLabel = headerOverride || (role === 'user' ? 'You' : config.aiName);
+                
+                const messageHeader = document.createElement('div');
+                messageHeader.className = 'message-header';
+                messageHeader.textContent = `${roleLabel} • ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                
+                const messageContent = document.createElement('div');
+                messageContent.className = 'message-content';
+
+                if (isThinking) {
+                    messageDiv.classList.add('thinking');
+                    messageContent.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div>`;
+                } else {
+                    if (role === 'ai') {
+                        messageContent.innerHTML = marked.parse(content, { breaks: true, gfm: true });
+                    } else {
+                        // For user messages, set as textContent to be safe, then manually replace newlines
+                        // as marked.parse also does this but we want to be explicit.
+                        let processedContent = content.replace(/</g, "<").replace(/>/g, ">"); // Basic XSS prevention
+                        messageContent.innerHTML = processedContent.replace(/\n/g, '<br>');
+                    }
+                }
+                
+                messageDiv.appendChild(messageHeader);
+                messageDiv.appendChild(messageContent);
+                this.chatMessages.appendChild(messageDiv);
+                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+
+                if (!isThinking) {
+                    // Only add to conversation history if it's a real message
+                    this.conversation.push({ timestamp: new Date().toISOString(), role: role, content: content });
+                    this.updateStats();
+                }
+                return messageDiv; // Return the message element (useful for removing thinking message)
+            }
+
+            changeEra() {
+                this.currentEra = this.eraSelector.value;
+                const config = this.getPersonaConfig();
+                this.beginAnew(false); // Does not confirm, just resets
+                this.showToast(`The Scribe now speaks as ${config.name}.`);
+            }
+
+            showToast(message) {
+                this.toastNotification.textContent = message;
+                this.toastNotification.classList.add('show');
+                setTimeout(() => this.toastNotification.classList.remove('show'), 3000);
+            }
+            
+            updateUIForPersona() {
+                const config = this.getPersonaConfig();
+                this.eraDescription.textContent = config.description;
+                this.updateStats();
+            }
+
+            updateStatus(status) {
+                const statusMessages = {
+                    ready: '🖋️ Ready to transcribe thy thoughts',
+                    thinking: '🕰️ The Scribe ponders...',
+                    error: '⚠️ The quill has run dry'
+                };
+                this.statusIndicator.textContent = statusMessages[status];
+                this.statusIndicator.className = `status-indicator status-${status}`;
+                this.sendButton.disabled = (status === 'thinking' || status === 'error');
+                if (status === 'error') {
+                    setTimeout(() => { // Auto-reset from error after a bit if not already reset
+                        if (this.statusIndicator.classList.contains('status-error')) {
+                            this.updateStatus('ready');
+                        }
+                    }, 5000);
+                }
+            }
+
+            updateStats() {
+                const config = this.getPersonaConfig();
+                // Count only user and AI messages, excluding initial prompts or system messages if any were ever added
+                const messageCount = this.conversation.filter(m => m.role === 'user' || m.role === 'ai').length;
+                // Subtract 1 if the first message is the initial AI greeting to not count it as a "turn"
+                const actualTurns = messageCount > 0 && this.conversation[0].content === config.initialContent && this.conversation[0].role === 'ai'
+                                    ? messageCount -1 
+                                    : messageCount;
+                this.conversationStats.textContent = `Turns: ${actualTurns} | Persona: ${config.name}`;
+            }
+
+            beginAnew(confirmFirst = true) {
+                const startFresh = () => {
+                    this.conversation = [];
+                    this.chatMessages.innerHTML = '';
+                    const config = this.getPersonaConfig();
+                    
+                    // Add the initial AI message for the selected persona
+                    this.addMessage('ai', config.initialContent, config.initialHeader);
+                    
+                    this.updateUIForPersona();
+                    this.initializeChat(); // This now mainly sets status to ready
+                };
+
+                if (confirmFirst && this.conversation.length > 1) { // Only confirm if there's actual conversation
+                    if (confirm('Art thou certain thou wishest to begin anew? All current discourse shall be lost to the sands of time.')) {
+                        startFresh();
+                    }
+                } else {
+                    startFresh();
+                }
+            }
+
+            preserveTale() {
+                // Filter out the initial AI message from the saved conversation
+                const conversationToSave = this.conversation.filter((msg, index) => {
+                    const config = this.getPersonaConfig(); // get config inside filter to be sure
+                    return !(index === 0 && msg.role === 'ai' && msg.content === config.initialContent);
+                });
+
+                if (conversationToSave.length === 0) { 
+                    this.showToast("There is no tale to preserve beyond the Scribe's greeting!");
+                    return;
+                }
+                const config = this.getPersonaConfig();
+                const chronicleData = {
+                    metadata: { 
+                        created: new Date().toISOString(), 
+                        title: `Chronicle of ${new Date().toLocaleDateString()}`, 
+                        persona: config.name,
+                        eraKey: this.currentEra,
+                        message_count: conversationToSave.length 
+                    },
+                    conversation: conversationToSave
+                };
+                const dataBlob = new Blob([JSON.stringify(chronicleData, null, 2)], {type: 'application/json'});
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(dataBlob);
+                link.download = `chronicle_${this.currentEra}_${Date.now()}.scribe`;
+                link.click();
+                URL.revokeObjectURL(link.href); // Clean up
+                this.showToast('Thy chronicle hath been preserved!');
+            }
+
+            recallChronicle(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const chronicleData = JSON.parse(e.target.result);
+                        if (!chronicleData.metadata || !chronicleData.conversation) {
+                            throw new Error("Invalid chronicle format.");
+                        }
+                        this.loadChronicle(chronicleData);
+                        this.showToast('Chronicle successfully recalled from the archives!');
+                    } catch (error) { 
+                        this.showToast('Alas! The chronicle appears corrupted or invalid.'); 
+                        console.error("Error recalling chronicle:", error); 
+                    }
+                };
+                reader.readAsText(file);
+                event.target.value = ''; // Reset file input
+            }
+
+            loadChronicle(chronicleData) {
+                this.currentEra = chronicleData.metadata.eraKey || 'standard';
+                this.eraSelector.value = this.currentEra;
+                
+                // Call beginAnew without confirmation to reset state and add initial persona message
+                this.beginAnew(false); 
+
+                // We need a slight delay for beginAnew to complete its DOM updates
+                // and add the initial AI message. Then we clear that initial message
+                // and add the loaded conversation.
+                setTimeout(() => {
+                    // Clear the initial message that beginAnew just added.
+                    // Keep the conversation array from beginAnew (which has the initial AI message).
+                    if (this.chatMessages.firstChild) {
+                         // We want to keep the initial message in the conversation array for context if needed,
+                         // but visually, we will replace it if the loaded chronicle doesn't start with it.
+                         // Or, simpler: clear all messages and conversation array from beginAnew, then rebuild.
+                         this.chatMessages.innerHTML = '';
+                         this.conversation = [];
+                    }
+                    
+                    const config = this.getPersonaConfig();
+
+                    // Add the standard initial greeting for the loaded persona
+                    this.addMessage('ai', config.initialContent, config.initialHeader);
+
+                    // Now add messages from the loaded chronicle
+                    chronicleData.conversation.forEach(msg => {
+                        const roleLabel = msg.role === 'user' ? 'You' : config.aiName;
+                        this.addMessage(msg.role, msg.content, roleLabel);
+                    });
+                    
+                    this.updateUIForPersona(); // Updates stats and description
+                    this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+                    this.initializeChat(); // Sets status to ready
+                }, 50); // Small delay to ensure DOM is ready
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => { 
+            // Check for marked library
+            if (typeof marked === 'undefined') {
+                console.error("Marked.js library not loaded. AI responses will not be formatted.");
+                const statusIndicator = document.getElementById('statusIndicator');
+                if (statusIndicator) {
+                    statusIndicator.textContent = "⚠️ Critical Error: Markdown library missing!";
+                    statusIndicator.className = "status-indicator status-error";
+                }
+                alert("Error: A required library (marked.js) is missing. Page functionality will be limited.");
+                return;
+            }
+            new YeOldeAIScribe(); 
+        });
+    </script>
+</body>
+</html>
