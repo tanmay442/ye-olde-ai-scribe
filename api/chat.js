@@ -128,7 +128,7 @@ if (API_KEY) {
     console.error("GOOGLE_API_KEY environment variable is not set or empty.");
 }
 
-const generationConfig = { /* Adjust as needed, e.g., temperature: 0.9 */ };
+const generationConfig = {  temperature: 2.0  };
 const safetySettings = [
     { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
     { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
