@@ -288,10 +288,10 @@
                 <div class="panel">
                     <h3>🏛️ Persona Selector</h3>
                     <select class="era-selector" id="eraSelector">
-                        <option value="standard">The Mindful Barista</option>
-                        <option value="shakespearean">The Globe's Fool</option>
-                        <option value="victorian">The Intrepid Naturalist</option>
-                        <option value="medieval">The Wandering Skald</option>
+                        <option value="standard">The Mindful Barista (Modern Era)</option>
+                        <option value="shakespearean">The Globe's Playwright (Elizabethan Era, 1590s)</option>
+                        <option value="victorian">The Intrepid Naturalist (Victorian Era, 1880s)</option>
+                        <option value="medieval">The Wandering Skald (Viking Age, c. 900s)</option>
                     </select>
                     <div class="era-description" id="eraDescription"></div>
                     <div class="conversation-stats" id="conversationStats"></div>
@@ -388,10 +388,10 @@
 
             getPersonaConfig() {
                 const configs = {
-                    standard: { name: "The Mindful Barista", description: "Warm, modern, and insightful café talk.", initialHeader: "The Barista is in", initialContent: "Hey, welcome in! The machine's warmed up and I've got a fresh cup of perspective brewing. What can I get for you today?", aiName: "The Barista" },
-                    shakespearean: { name: "The Globe's Fool", description: "Witty, poetic, and dramatic Elizabethan banter.", initialHeader: "The Fool takes the stage", initialContent: "Hark, a worthy patron! The stage is set, the crowd is hushed. Speak thy mind, and let our pleasant comedy commence! What is thy opening line?", aiName: "The Fool" },
-                    victorian: { name: "The Intrepid Naturalist", description: "Enthusiastic, formal, 19th-century scientific discourse.", initialHeader: "The Study is open", initialContent: "By Jove, come in! Don't mind the clutter, it is merely the evidence of a world waiting to be discovered. What grand hypothesis shall we explore today, my dear fellow?", aiName: "The Naturalist" },
-                    medieval: { name: "The Wandering Skald", description: "Heroic, archaic, and saga-inspired Northern tales.", initialHeader: "The Skald tends the fire", initialContent: "Hail, traveler! The fire is lit against the dark, and the mead is poured. Your seat is saved. Share with me the tale that is on your heart.", aiName: "The Skald" }
+                    standard: { name: "The Mindful Barista (Modern Era)", description: "Warm, modern, and insightful café talk.", initialHeader: "The Barista is in", initialContent: "Hey, welcome in! The machine's warmed up and I've got a fresh cup of perspective brewing. What can I get for you today?", aiName: "The Barista" },
+                    shakespearean: { name: "The Globe's Playwright (Elizabethan Era, 1590s)", description: "Witty, poetic, and dramatic Elizabethan banter.", initialHeader: "The Playwright takes the stage", initialContent: "Hark, a worthy patron! The stage is set, the crowd is hushed. Speak thy mind, and let our pleasant comedy commence! What is thy opening line?", aiName: "The Playwright" },
+                    victorian: { name: "The Intrepid Naturalist (Victorian Era, 1880s)", description: "Enthusiastic, formal, 19th-century scientific discourse.", initialHeader: "The Study is open", initialContent: "By Jove, come in! Don't mind the clutter, it is merely the evidence of a world waiting to be discovered. What grand hypothesis shall we explore today, my dear fellow?", aiName: "The Naturalist" },
+                    medieval: { name: "The Wandering Skald (Viking Age, c. 900s)", description: "Heroic, archaic, and saga-inspired Northern tales.", initialHeader: "The Skald tends the fire", initialContent: "Hail, traveler! The fire is lit against the dark, and the mead is poured. Your seat is saved. Share with me the tale that is on your heart.", aiName: "The Skald" }
                 };
                 return configs[this.currentEra] || configs['standard'];
             }
